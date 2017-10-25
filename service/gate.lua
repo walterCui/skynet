@@ -1,5 +1,6 @@
 local skynet = require "skynet"
-local gateserver = require "snax.gateserver"
+--local gateserver = require "snax.gateserver"
+local gateserver = require "websocket.websocketGateServer"
 local netpack = require "skynet.netpack"
 
 local watchdog
@@ -24,6 +25,7 @@ function handler.message(fd, msg, sz)
 	if agent then
 		skynet.redirect(agent, c.client, "client", 1, msg, sz)
 	else
+		print('fd no agent'..fd..'sz'..sz)
 		skynet.send(watchdog, "lua", "socket", "data", fd, netpack.tostring(msg, sz))
 	end
 end

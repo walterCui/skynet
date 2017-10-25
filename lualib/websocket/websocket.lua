@@ -9,7 +9,7 @@ local websocket_upgrade = 'upgrade'
 local websocket_key_magic = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
 local websocket = {
-opcode={continuation=0x0, text = 0x1, binary = 0x3, close = 0x8, ping = 0x9, pong = 0xA}
+opcode={continuation=0x0, text = 0x1, binary = 0x2, close = 0x8, ping = 0x9, pong = 0xA}
 }
 local websocket_mt = {__index=websocket}
 
@@ -144,25 +144,21 @@ function websocket:readFrame( readFunc )
 	end
 	local maskkey = data
 
+	data = readFunc(dataLen)
+	if not data then
+		return true, 'no data' 
+	end
+	data = websocket.unMask(maskkey, data, dataLen)
 
 	if not fin then
-		data = readFunc(dataLen)
-		if not data then
-			return true, 'no data' 
-		end
-		data = websocket.unMask(maskkey, data, dataLen)
 		return false, false, data
 	else
 		local enuCode = websocket.opcode
 		if opcode == enuCode.continuation or opcode == enuCode.text  or opcode == enuCode.binary then
-			data = readFunc(dataLen)
-			if not data then
-				return true, 'no data' 
-			end
-			data = websocket.unMask(maskkey, data, dataLen)
 			return false, true, data
 		elseif opcode == enuCode.close then
 			--close.
+			print('by close'..data)
 			self:close()
 		elseif opcode == enuCode.ping then
 			--ping
@@ -188,12 +184,17 @@ function websocket:start(readFunc, writeFunc, hander)
 	local tempTable = {}
 	while(self.connect) do
 		local err, isOver, data = self:readFrame(readFunc)
-		if(err) then
+
+		if self.connect == false then
+			break;
+		end
+
+		if err then
 			hander.onError(self.socketFd,isOver)
 			break;
 		end
 		table.insert(tempTable,data)
-		if(isOver) then
+		if isOver then
 			local msg = table.concat(tempTable)
 			hander.onMessage(self.socketFd,msg)
 			tempTable = {}
