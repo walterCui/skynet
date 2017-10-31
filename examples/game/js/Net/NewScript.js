@@ -19,7 +19,20 @@ cc.Class({
     onLoad: function () {
         var ws = new Network("ws://127.0.0.1:8001",{
             onopen:function(){
-                ws.login('1111','33')
+                ws.login('111','33',function(msg){
+                    if(msg.error){
+                        console.log('login error',msg.error)
+                    }else{
+                        console.log('ddddd',msg.uid);
+                        ws.enterRoom((1<<8)+0,function(msg){
+                            if(msg.error){
+                                console.log("enter room error",msg.error.value)
+                            }else{
+                                //enter room ok.
+                            }
+                        })
+                    }
+                })
             }
         });
     },

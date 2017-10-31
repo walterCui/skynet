@@ -1,48 +1,90 @@
 var ProtoType = require('NetGlobal').ProtoType;
 
-var opcode2Protocol = {}
+var opcode2Request = {}
+
 var session2Response = {}
+
+var responeCallback = {}
+
+var request = {}
 
 var init = function(){
     var proto;
     for(var i in Protocols){
         proto = Protocols[i];
-        if(proto.opcode){
-            opcode2Protocol[proto.opcode] = proto;
-            
-            if(proto.session){
-                session2Response[proto.session] = Respone[i];
+        var req = proto.request;
+        var res = proto.respone;
+
+        if(req){
+            opcode2Request[req.opcode] = req;
+            request[i] = req;
+            if(req.session){
+                session2Response[req.session] = res;
             }
         }
     }
 }
 
 var findRequestByOpcode = function(opcode){
-    return opcode2Protocol[opcode];
+    return opcode2Request[opcode];
 }
 
 var findResponseBySeesion = function(session){
     return session2Response[session];
 }
 
+var registerCb = function(session, cb){
+    responeCallback[session] = cb;
+}
+
+var findCb = function(session){
+    return responeCallback[session];
+}
+
+
+//房间内的玩家信息.
+var useInRoom = {
+    name : {type : ProtoType.TypeString, tag : 0},
+    pos :  {type : ProtoType.TypeInt32,  tag : 1}
+}
+
 var Protocols = {
     login:{
-        opcode : 3,
-        session : 3,
-        param : {what:{type:ProtoType.TypeString, tag:0},value:{type:ProtoType.TypeString, tag:1}},
+        request:{
+            opcode : 3,
+            session : 3,
+            param : {
+                name:{type:ProtoType.TypeString, tag:0},
+                pwd:{type:ProtoType.TypeString, tag:1}
+            }
+        },
+        respone:{
+            error:{type:ProtoType.TypeInt32, tag:0},
+            uid:{type:ProtoType.TypeInt32, tag:1},
         }
+    },
+    enterRoom:{
+        request:{
+            opcode : 4,
+            session : 4,
+            param : {
+                roomId : {type : ProtoType.TypeInt32, tag : 0}
+            }
+        },
+        respone:{
+            error : {type:ProtoType.TypeInt32, tag:0},
+            roomId : {type:ProtoType.TypeInt32, tag:1},            
+            uses :  {type:ProtoType.TypeArrayStruct, subType: useInRoom,tag : 2}
+        }
+    }
 
 };
 
-var Respone = {
-    login:{
-        result:{type:ProtoType.TypeString, tag:0}
-    }
-}
-
 module.exports = {
-    protocols:Protocols, 
+    request:request, 
     init:init, 
     findRequestByOpcode:findRequestByOpcode,
-    findResponseBySeesion:findResponseBySeesion
+    findResponseBySeesion:findResponseBySeesion,
+    registerCb:registerCb,
+    findCb:findCb
 };

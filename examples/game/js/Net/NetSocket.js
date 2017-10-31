@@ -1,32 +1,14 @@
-var NetProto = require("NetProto").NetProto
 var Protocols = require('Protocols')
 
 
 var NetSocket = function(url, handle){
     var ws = new WebSocket(url);
-    // ws.binaryType = 'arraybuffer'
+    ws.binaryType = 'arraybuffer'
     ws.onopen = function (event) {
         handle.onopen(event);
     };
     ws.onmessage = function (event) {
-        var reader = new FileReader();
-        reader.addEventListener("loadend", function(){
-            var ret = [];
-            var res = reader.result;
-            for(var i = 0, max = res.length; i < max; i++){
-                ret.push(res.charCodeAt(i));
-            }
-            var temp = netProto.unPack(ret);
-
-            var headerTemp = netProto.decode(temp);
-            var header = headerTemp.result;
-
-            var resp = Protocols.findResponseBySeesion(header.session);
-            headerTemp = netProto.decode(resp,temp, headerTemp.size);
-
-            handle.onmessage({msg:headerTemp.result, session:header.session});
-        });
-        reader.readAsBinaryString(event.data);
+        handle.onmessage(event);
     };
     ws.onerror = function (event) {
         handle.onerror(event);
@@ -43,11 +25,8 @@ var NetSocket = function(url, handle){
             handle.ontimeout();
         }
     }, 3);
-
-    var netProto = new NetProto();
     this.send = function(msg){
-        var ret = netProto.encode(msg);
-        ws.send(netProto.pack(ret));
+        ws.send(msg);
     }
 }
 

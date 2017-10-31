@@ -14,7 +14,7 @@ function NetProto(){
         return data[index] + (data[index+1] << 8)  + (data[index+2] << 16)  + (data[index+3] << 24) ;
     }
 
-    var readShort = function(data, index){
+    var toInt16 = function(data, index){
         return data[index] + (data[index+1] << 8);
     }
 
@@ -51,7 +51,7 @@ function NetProto(){
         }
     }
 
-    var decodeFieldSz = function(args){
+    var decodeField = function(args){
         var field = args.field;
         var fieldIndex = args.fieldIndex;
 
@@ -118,6 +118,9 @@ function NetProto(){
                         case ProtoType.TypeString:
                         encodeString(header,data,temp.value);
                         break;
+                        case ProtoType.TypeInt32:
+                        encodeInt(header,data,temp.value);
+                        break;
                         default:
                         break;
                     }
@@ -150,34 +153,74 @@ function NetProto(){
             //decode header.
             val = resp;
             args = {field:val, fieldIndex:src, data:val, dataIndex:src};
-            var fieldSz = decodeFieldSz(args);
+            var fieldSz = decodeField(args);
             args.dataIndex = (fieldSz + 1) * 2;
             var opcode = decodeInt(args);
             var session = decodeInt(args);
             return {result:{opcode:opcode, session:session},size:args.dataIndex}
         }
         else{
+            var retResp = {}
             src = index;
             args = {field:val, fieldIndex:src, data:val, dataIndex:src};
             var leftSz = val.length - args.dataIndex;
             if(leftSz < 3)
                 return {result:resp,size:0};
             //decode content.
-            var fieldSz = decodeFieldSz(args);
+            var fieldSz = decodeField(args);
             args.dataIndex = (fieldSz + 1) * 2 + src;
             var temp;
+            var skipTag = 0;
             for(var i in resp){
+
+                if(skipTag > 0){
+                    skipTag--;
+                    continue;
+                }
+                
+                var field = toInt16(val,args.fieldIndex);
+                if((field & 1) != 0){
+                    skipTag = (field -1) / 2 ;
+                    args.fieldIndex += 2;
+                    continue;
+                }
                 temp = resp[i];
+                var decodeValue;
                 switch(temp.type){
                     case ProtoType.TypeString:
-                        temp.value = decodeString(args);
+                        decodeValue = decodeString(args);
+                        break;
+                    case ProtoType.TypeInt32:
+                        decodeValue = decodeInt(args);
+                        break;
+                    case ProtoType.TypeStruct:
+                        var stSz = toInt32(val,args.dataIndex);
+                        args.dataIndex += 4;
+                        decodeValue = this.decode(temp.subType, val, args.dataIndex).result;
+                        args.dataIndex += stSz;
+                    break;
+                    case ProtoType.TypeArrayStruct:
+                        var stSz = toInt32(val,args.dataIndex);
+                        args.dataIndex += 4;
+                        decodeValue = [];
+
+                        while(stSz > 0){
+                            var suSz = toInt32(val,args.dataIndex);
+                            args.dataIndex += 4;
+                            stSz -= 4;
+                            decodeValue.push(this.decode(temp.subType, val, args.dataIndex).result);
+                            stSz -= suSz;
+                            args.dataIndex += suSz;
+                        }
+                        args.dataIndex += stSz;
                     break;
                     default:
                     break;
                 }
+                retResp[i] = decodeValue;
             }
 
-            return {result:resp,size:0};
+            return {result:retResp,size:0};
         }
     }
 
