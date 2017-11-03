@@ -17,10 +17,14 @@ local wsPool = {}
 
 local netPack = {}
 local handerMsg
+local msgPool = {}--用于存储未接受完的msg.
 
 function netPack.onMessage(fd, msg)
 	--需要进行拆包处理，拆完包后交由handler处理.
-	local unpackMsg = msg
+	--暂时认为是一个完整的包.
+	--local  dataSz = msg:byte(1) * 256 + msg:byte(2)
+
+	local unpackMsg = msg--msg:sub(3,dataSz+2)
 	handerMsg.message(fd,unpackMsg)
 end
 function netPack.onError(fd, err)

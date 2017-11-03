@@ -80,7 +80,7 @@ function websocket:send(msg, opcode)
 	local payloadLen
 	if msgLen < 126 then
 		payloadLen = string.pack("B",msgLen | mask_bit)
-	elseif msgLen < 0xFF then
+	elseif msgLen < 0xFFFF then
 		payloadLen = string.pack(">BH",126 | mask_bit, msgLen)
 	else
 		payloadLen = string.pack(">BL",127 | mask_bit, msgLen)
